@@ -24,12 +24,22 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
+
+private slots:
+    void simulateDistanceSensorSlot();
 private:
+    // data processing helpers
     QVector<DistanceSensorData> simulateDistanceSensor();
     void plotDistanceSensorData();
-private:
-    Ui::MainWindow *ui;
 
+    //building gui functions
+    void createMenus();
+    void createActions();
+private:
+    // gui data members
+    Ui::MainWindow *ui;
+    QMenu *_distanceSensorMenu;
+    QAction *_simulateSensorAct;
     // plotting primitives
 
     // data primitives

@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/distance_sensor">
+        <file>distance_sensor_data.json</file>
+    </qresource>
+</RCC>
