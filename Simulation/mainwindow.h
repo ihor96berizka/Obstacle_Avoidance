@@ -54,11 +54,13 @@ private:
     QMenu *_distanceSensorMenu;
     QAction *_simulateSensorAct;
     // plotting primitives
+    QChart* chart;
+    QChartView* chartView;
 
     // data primitives
     QVector<DistanceSensorData> _distanceSensorData;
     static constexpr double _thresholdDistance = 2; // minimum distance to object.
     static constexpr double _w_robot = 0.3; // robot width in meters.
-    static constexpr double _distance_sensor_range = 10.0; // maximum range of distance sensor, in meters.
+    static constexpr double _distance_sensor_range = 5.0; // maximum range of distance sensor, in meters.
 };
 #endif // MAINWINDOW_H

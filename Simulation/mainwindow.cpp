@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+﻿#include "mainwindow.h"
 #include "ui_mainwindow.h"
 
 #include <random>
@@ -27,6 +27,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    delete chart;
     delete ui;
 }
 
@@ -68,7 +69,7 @@ QVector<DistanceSensorData> MainWindow::simulateDistanceSensor()
 
 void MainWindow::plotDistanceSensorData()
 {
-    QLineSeries* threasholdLine = new QLineSeries;
+  /*  QLineSeries* threasholdLine = new QLineSeries;
     QLineSeries* distanceSeries = new QLineSeries;
     //QBarSeries* distabceBarSeries = new QBarSeries;
     QScatterSeries *distanceScatterSeries = new QScatterSeries;
@@ -84,23 +85,24 @@ void MainWindow::plotDistanceSensorData()
         //bar->append(item.distance);
         //distabceBarSeries->append(bar);
     }
-
-    QChart* chart = new QChart;
-    chart->addSeries(threasholdLine);
+*/
+    chart = new QChart;
+ /*   chart->addSeries(threasholdLine);
     chart->addSeries(distanceSeries);
     //chart->addSeries(distabceBarSeries);
     chart->addSeries(distanceScatterSeries);
-
-    QChartView* chartView = new QChartView(chart);
+*/
+    chartView = new QChartView(chart);
     chartView->setRenderHint(QPainter::Antialiasing);
     chart->createDefaultAxes();
 
-    chart->legend()->setVisible(true);
+   /* chart->legend()->setVisible(true);
     chart->legend()->setAlignment(Qt::AlignBottom);
     chart->axes(Qt::Horizontal).first()->setTitleText("angle");
     QAbstractAxis* yAxis =  chart->axes(Qt::Vertical).first();
     yAxis->setTitleText("distance, m");
     yAxis->setMin(0);
+    */
     this->setCentralWidget(chartView);
 
     calculateRepulsiveField();
@@ -189,11 +191,12 @@ void MainWindow::calculateObstaclesAverages(QVector<Obstacle> &obstacles)
     for (auto& item : obstacles)
     {
         double averageDistance = std::accumulate(item.distances.begin(), item.distances.end(), 0.0) / item.distances.size();
-        double averageAngle = std::accumulate(item.angles.begin(), item.angles.end(), 0.0) / item.angles.size();
+        double averageAngle = item.angles.last() - item.angles.first();
+                //std::accumulate(item.angles.begin(), item.angles.end(), 0.0) / item.angles.size();
         item.averageDistance = averageDistance;
         item.averageAngle = averageAngle;
 
-        qInfo() << "Average dist: " << averageDistance << " | avg angle: " << averageAngle;
+        qInfo() << "Average dist: " << averageDistance << " | avg angle: " << item.averageAngle;
     }
 }
 
@@ -204,11 +207,77 @@ void MainWindow::calculateRepulsiveField()
     // (9)
     for (int k = 0; k < obstacles.size(); ++k)
     {
-        obstacles[k].a = (_distance_sensor_range - obstacles[k].averageDistance * _distance_sensor_range) * std::exp(0.5);
+        double d = _distance_sensor_range - (obstacles[k].averageDistance);
+        obstacles[k].a =  d * std::exp(0.5);
+        qInfo() << "A[" << k << "]=" << obstacles[k].a;
     }
 
     // (10)
+    QVector<DistanceSensorData> repulsiveFieldData;
+ /*   for (int i = 0; i < _distanceSensorData.size(); ++i) // distance sensor data is used, cause it holds angles.
+    {
+        qInfo() << "calculating...";
+        //double sum = 0;
+        for (int k = 0; k < obstacles.size(); ++k)
+        {
+            double underExp = 10;/*-(std::pow(obstacles[k].averageAngle - _distanceSensorData[i].angle, 2))
+                    /
+                    2.0 * std::pow(
+                        std::atan2(
+                            obstacles[k].averageDistance * std::tan(obstacles[k].averageAngle) + 0.5 * _w_robot,
+                            obstacles[k].averageDistance), 2);
+            qInfo() << "A[k]: " << obstacles[k].a;
+            double sum = obstacles[k].a * std::exp(underExp);
+            repulsiveFieldData.push_back({_distanceSensorData[i].angle, sum});
+        }
+        //repulsiveFieldData.push_back({_distanceSensorData[i].angle, sum});
+    }
 
+*/
+    // (7/10)
+    for(int idx = 0; idx < obstacles.size(); ++idx)
+    {
+        int midIdx = obstacles[idx].angles.size() / 2;
+        double sigma = obstacles[idx].averageAngle / 2.0;//obstacles[0].angles[midIdx]/2;
+        qInfo() << "angle: " << obstacles[idx].averageAngle;
+        qInfo() << "midIDx: " << midIdx;
+        qInfo() << "sigma/: " << sigma;
+
+        double Teta_k = obstacles[idx].angles[midIdx];
+        qInfo() << "teta[0]: " << Teta_k;
+            for (int i = 0; i < _distanceSensorData.size(); ++i)
+            {
+                double underExp = std::pow(Teta_k - _distanceSensorData[i].angle, 2)
+                                    /
+                                    2.0 * std::pow(sigma, 2);
+              //  qInfo() << "Teta[i]: " << _distanceSensorData[i].angle;
+              //  qInfo() << "underExp: " << underExp;
+                double val = obstacles[idx].a * std::exp(-underExp);
+               // qInfo() << "val = " << val;
+                repulsiveFieldData.push_back({_distanceSensorData[i].angle, val});
+            }
+    }
+
+    qInfo() << "items:" << repulsiveFieldData.size();
+
+   // chart->removeAllSeries();
+    QLineSeries* repulsiveSeries = new QLineSeries(chart);
+   // repulsiveSeries->append(5, 8);
+   // repulsiveSeries->append(8, 4);
+    for (auto& item : repulsiveFieldData)
+    {
+        repulsiveSeries->append(item.angle, item.distance);
+    }
+
+    chart->addSeries(repulsiveSeries);
+    chart->createDefaultAxes();
+
+    chart->legend()->setVisible(true);
+    chart->legend()->setAlignment(Qt::AlignBottom);
+    chart->axes(Qt::Horizontal).first()->setTitleText("angle");
+    QAbstractAxis* yAxis =  chart->axes(Qt::Vertical).first();
+    yAxis->setTitleText("F_rep(Teta[i])");
+    //yAxis->setMin(-1e10);
 }
 
 void MainWindow::createMenus()
