@@ -9,7 +9,9 @@
 
 namespace
 {
-const char* kDistanceSensotFilePath{":/distance_sensor/distance_sensor_data.json"};
+const char* kDistanceSensotFilePath{":/distance_sensor/distance_sensor_data.json"};//obstacles [20;65], [71;108]
+  //  ":/distance_sensor/distance_sensor_data_test.json"}; //obstacle is on angles[71;108]
+
 
 const char* kDataKey{"Data"};
 const char* kAngleKey{"angle"};
@@ -35,6 +37,46 @@ void MainWindow::simulateDistanceSensorSlot()
 {
     _distanceSensorData = simulateDistanceSensor();
     plotDistanceSensorData();
+}
+
+void MainWindow::calculateForcesSlot()
+{
+    auto repulsive =  calculateRepulsiveField();
+    auto attractive = calculateAttractiveField();
+    auto total = calculateTotalField(repulsive, attractive);
+
+    chart->removeAllSeries();
+    QLineSeries* repulsiveSeries = new QLineSeries(chart);
+    repulsiveSeries->setName("F_Rep(Teta)");
+    for (auto& item : repulsive)
+    {
+        repulsiveSeries->append(item.angle, item.distance);
+    }
+    chart->addSeries(repulsiveSeries);
+
+    QLineSeries* attractiveSeries = new QLineSeries(chart);
+    attractiveSeries->setName("F_Attr(Teta)");
+    for (auto& item : attractive)
+    {
+        attractiveSeries->append(item.angle, item.distance);
+    }
+    chart->addSeries(attractiveSeries);
+
+    QLineSeries* totalSeries = new QLineSeries(chart);
+    totalSeries->setName("F_Total(Teta)");
+    for (auto& item : total)
+    {
+        totalSeries->append(item.angle, item.distance);
+    }
+    chart->addSeries(totalSeries);
+
+    chart->createDefaultAxes();
+
+    chart->legend()->setVisible(true);
+    chart->legend()->setAlignment(Qt::AlignBottom);
+    chart->axes(Qt::Horizontal).first()->setTitleText("angle");
+    QAbstractAxis* yAxis =  chart->axes(Qt::Vertical).first();
+    yAxis->setTitleText("F_x(Teta[i])");
 }
 
 QVector<DistanceSensorData> MainWindow::simulateDistanceSensor()
@@ -69,43 +111,32 @@ QVector<DistanceSensorData> MainWindow::simulateDistanceSensor()
 
 void MainWindow::plotDistanceSensorData()
 {
-  /*  QLineSeries* threasholdLine = new QLineSeries;
+    QLineSeries* threasholdLine = new QLineSeries;
     QLineSeries* distanceSeries = new QLineSeries;
-    //QBarSeries* distabceBarSeries = new QBarSeries;
-    QScatterSeries *distanceScatterSeries = new QScatterSeries;
     threasholdLine->setName("Threashold distance");
-    //distanceSeries->setName("distance to obstacle");
+    distanceSeries->setName("distance to obstacle");
 
     for (auto& item : _distanceSensorData)
     {
         threasholdLine->append(item.angle, _thresholdDistance);
-        distanceScatterSeries->append(item.angle, item.distance);
         distanceSeries->append(item.angle, item.distance);
-        //QBarSet *bar = new QBarSet(QString::number(item.angle));
-        //bar->append(item.distance);
-        //distabceBarSeries->append(bar);
     }
-*/
+
     chart = new QChart;
- /*   chart->addSeries(threasholdLine);
+    chart->addSeries(threasholdLine);
     chart->addSeries(distanceSeries);
-    //chart->addSeries(distabceBarSeries);
-    chart->addSeries(distanceScatterSeries);
-*/
+
     chartView = new QChartView(chart);
     chartView->setRenderHint(QPainter::Antialiasing);
     chart->createDefaultAxes();
 
-   /* chart->legend()->setVisible(true);
+    chart->legend()->setVisible(true);
     chart->legend()->setAlignment(Qt::AlignBottom);
     chart->axes(Qt::Horizontal).first()->setTitleText("angle");
     QAbstractAxis* yAxis =  chart->axes(Qt::Vertical).first();
     yAxis->setTitleText("distance, m");
-    yAxis->setMin(0);
-    */
-    this->setCentralWidget(chartView);
 
-    calculateRepulsiveField();
+    this->setCentralWidget(chartView);
 }
 
 QVector<Obstacle> MainWindow::enlargeObstacles(const double w_robot)
@@ -200,7 +231,7 @@ void MainWindow::calculateObstaclesAverages(QVector<Obstacle> &obstacles)
     }
 }
 
-void MainWindow::calculateRepulsiveField()
+QVector<DistanceSensorData> MainWindow::calculateRepulsiveField()
 {
     auto obstacles = enlargeObstacles(_w_robot);
 
@@ -214,76 +245,66 @@ void MainWindow::calculateRepulsiveField()
 
     // (10)
     QVector<DistanceSensorData> repulsiveFieldData;
- /*   for (int i = 0; i < _distanceSensorData.size(); ++i) // distance sensor data is used, cause it holds angles.
+    for (int i = 0; i < _distanceSensorData.size(); ++i) // distance sensor data is used, cause it holds angles.
     {
-        qInfo() << "calculating...";
-        //double sum = 0;
+        //qInfo() << "calculating...";
+        double sum = 0;
         for (int k = 0; k < obstacles.size(); ++k)
         {
-            double underExp = 10;/*-(std::pow(obstacles[k].averageAngle - _distanceSensorData[i].angle, 2))
+            int midIdx = obstacles[k].angles.size() / 2;
+            double sigma = obstacles[k].averageAngle / 2.0;  // half of the angle occupied by obstacle
+            //qInfo() << "angle: " << obstacles[k].averageAngle;
+            //qInfo() << "midIDx: " << midIdx;
+            qInfo() << "sigma/: " << sigma;
+
+            double Teta_k = obstacles[k].angles[midIdx];  //center angle of the obstacle
+            //qInfo() << "teta[0]: " << Teta_k;
+            double underExp = -(std::pow(Teta_k - _distanceSensorData[i].angle, 2))
                     /
-                    2.0 * std::pow(
-                        std::atan2(
-                            obstacles[k].averageDistance * std::tan(obstacles[k].averageAngle) + 0.5 * _w_robot,
-                            obstacles[k].averageDistance), 2);
-            qInfo() << "A[k]: " << obstacles[k].a;
-            double sum = obstacles[k].a * std::exp(underExp);
-            repulsiveFieldData.push_back({_distanceSensorData[i].angle, sum});
+                    2.0 * std::pow(sigma, 2);
+            //qInfo() << "A[k]: " << obstacles[k].a;
+            double val = obstacles[k].a * std::exp(underExp);
+            sum += val;
         }
-        //repulsiveFieldData.push_back({_distanceSensorData[i].angle, sum});
-    }
-
-*/
-    // (7/10)
-    for(int idx = 0; idx < obstacles.size(); ++idx)
-    {
-        int midIdx = obstacles[idx].angles.size() / 2;
-        double sigma = obstacles[idx].averageAngle / 2.0;//obstacles[0].angles[midIdx]/2;
-        qInfo() << "angle: " << obstacles[idx].averageAngle;
-        qInfo() << "midIDx: " << midIdx;
-        qInfo() << "sigma/: " << sigma;
-
-        double Teta_k = obstacles[idx].angles[midIdx];
-        qInfo() << "teta[0]: " << Teta_k;
-            for (int i = 0; i < _distanceSensorData.size(); ++i)
-            {
-                double underExp = std::pow(Teta_k - _distanceSensorData[i].angle, 2)
-                                    /
-                                    2.0 * std::pow(sigma, 2);
-              //  qInfo() << "Teta[i]: " << _distanceSensorData[i].angle;
-              //  qInfo() << "underExp: " << underExp;
-                double val = obstacles[idx].a * std::exp(-underExp);
-               // qInfo() << "val = " << val;
-                repulsiveFieldData.push_back({_distanceSensorData[i].angle, val});
-            }
+        qInfo() << "angle: " << _distanceSensorData[i].angle << "val = " << sum;
+        repulsiveFieldData.push_back({_distanceSensorData[i].angle, sum});
     }
 
     qInfo() << "items:" << repulsiveFieldData.size();
 
-   // chart->removeAllSeries();
-    QLineSeries* repulsiveSeries = new QLineSeries(chart);
-   // repulsiveSeries->append(5, 8);
-   // repulsiveSeries->append(8, 4);
-    for (auto& item : repulsiveFieldData)
+    return repulsiveFieldData;
+}
+
+QVector<DistanceSensorData> MainWindow::calculateAttractiveField()
+{
+    QVector<DistanceSensorData> attrFieldData;
+    for (int i = 0; i < _distanceSensorData.size(); ++i) // distance sensor data is used, cause it holds angles.
     {
-        repulsiveSeries->append(item.angle, item.distance);
+        double value = _gamma * abs(_teta_goal - _distanceSensorData[i].angle);
+        attrFieldData.push_back({_distanceSensorData[i].angle, value});
     }
 
-    chart->addSeries(repulsiveSeries);
-    chart->createDefaultAxes();
+    return attrFieldData;
+}
 
-    chart->legend()->setVisible(true);
-    chart->legend()->setAlignment(Qt::AlignBottom);
-    chart->axes(Qt::Horizontal).first()->setTitleText("angle");
-    QAbstractAxis* yAxis =  chart->axes(Qt::Vertical).first();
-    yAxis->setTitleText("F_rep(Teta[i])");
-    //yAxis->setMin(-1e10);
+QVector<DistanceSensorData> MainWindow::calculateTotalField(const QVector<DistanceSensorData> &repulsive,
+                                                            const QVector<DistanceSensorData> &attractive)
+{
+    QVector<DistanceSensorData> total;
+    for (int idx = 0; idx < repulsive.size(); ++idx)
+    {
+        total.push_back({repulsive[idx].angle,
+                         repulsive[idx].distance + attractive[idx].distance});
+    }
+
+    return total;
 }
 
 void MainWindow::createMenus()
 {
     _distanceSensorMenu = menuBar()->addMenu(tr("Distance sensor"));
     _distanceSensorMenu->addAction(_simulateSensorAct);
+    _distanceSensorMenu->addAction(_calculateForcesAct);
 }
 
 void MainWindow::createActions()
@@ -291,5 +312,9 @@ void MainWindow::createActions()
     _simulateSensorAct = new QAction(tr("Simulate data"), this);
     _simulateSensorAct->setToolTip(tr("Reads distance data from json file"));
     connect(_simulateSensorAct, &QAction::triggered, this, &MainWindow::simulateDistanceSensorSlot);
+
+    _calculateForcesAct = new QAction(tr("Calculate forces"));
+    _calculateForcesAct->setToolTip(tr("Calculate f_rep, F_attr and F_total"));
+    connect(_calculateForcesAct, &QAction::triggered, this, &MainWindow::calculateForcesSlot);
 }
 

@@ -36,6 +36,7 @@ public:
 
 private slots:
     void simulateDistanceSensorSlot();
+    void calculateForcesSlot();
 private:
     // data processing helpers
     QVector<DistanceSensorData> simulateDistanceSensor();
@@ -43,7 +44,10 @@ private:
     QVector<Obstacle> enlargeObstacles(const double w_robot);
     QVector<Obstacle> findObstacles();
     void calculateObstaclesAverages(QVector<Obstacle> &obstacles);
-    void calculateRepulsiveField();
+    QVector<DistanceSensorData> calculateRepulsiveField();
+    QVector<DistanceSensorData> calculateAttractiveField();
+    QVector<DistanceSensorData> calculateTotalField(const QVector<DistanceSensorData>& repulsive,
+                                                    const QVector<DistanceSensorData>& attractive);
     //building gui functions
     void createMenus();
     void createActions();
@@ -53,6 +57,7 @@ private:
     Ui::MainWindow *ui;
     QMenu *_distanceSensorMenu;
     QAction *_simulateSensorAct;
+    QAction *_calculateForcesAct;
     // plotting primitives
     QChart* chart;
     QChartView* chartView;
@@ -60,7 +65,9 @@ private:
     // data primitives
     QVector<DistanceSensorData> _distanceSensorData;
     static constexpr double _thresholdDistance = 2; // minimum distance to object.
-    static constexpr double _w_robot = 0.3; // robot width in meters.
-    static constexpr double _distance_sensor_range = 5.0; // maximum range of distance sensor, in meters.
+    static constexpr double _w_robot = 0.5; // robot width in meters.
+    static constexpr double _distance_sensor_range = 10.0; // maximum range of distance sensor, in meters.
+    static constexpr double _teta_goal = 75; // angle to goal point.
+    static constexpr double _gamma = 0.5; // see eq (11)
 };
 #endif // MAINWINDOW_H
