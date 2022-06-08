@@ -5,13 +5,8 @@
 
 #include <QtCharts>
 
-#include <QVector>
+#include "solver.h"
 
-struct DistanceSensorData
-{
-    int angle;
-    double distance;
-};
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -27,23 +22,26 @@ public:
 
 private slots:
     void simulateDistanceSensorSlot();
+    void calculateForcesSlot();
 private:
     // data processing helpers
-    QVector<DistanceSensorData> simulateDistanceSensor();
-    void plotDistanceSensorData();
+    void plotDistanceSensorData(const QVector<DistanceSensorData>& data);
 
     //building gui functions
     void createMenus();
     void createActions();
+
 private:
     // gui data members
     Ui::MainWindow *ui;
     QMenu *_distanceSensorMenu;
     QAction *_simulateSensorAct;
+    QAction *_calculateForcesAct;
     // plotting primitives
+    QChart* chart;
+    QChartView* chartView;
 
     // data primitives
-    QVector<DistanceSensorData> _distanceSensorData;
-    static constexpr double _thresholdDistance = 2;
+    Solver _solver;
 };
 #endif // MAINWINDOW_H

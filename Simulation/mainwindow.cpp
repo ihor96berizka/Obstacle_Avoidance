@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+﻿#include "mainwindow.h"
 #include "ui_mainwindow.h"
 
 #include <random>
@@ -9,12 +9,10 @@
 
 namespace
 {
-const char* kDistanceSensotFilePath{":/distance_sensor/distance_sensor_data.json"};
-
-const char* kDataKey{"Data"};
-const char* kAngleKey{"angle"};
-const char* kDistanceKey{"distance"};
+const char* kDistanceSensotFilePath{":/distance_sensor/distance_sensor_data.json"};//obstacles [20;65], [71;108]
+  //  ":/distance_sensor/distance_sensor_data_test.json"}; //obstacle is on angles[71;108]
 } // namespace
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -27,65 +25,74 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    delete chart;
     delete ui;
 }
 
 void MainWindow::simulateDistanceSensorSlot()
 {
-    _distanceSensorData = simulateDistanceSensor();
-    plotDistanceSensorData();
+    _solver.init(kDistanceSensotFilePath);
+    auto distanceSensorData = _solver.getSensorData();
+
+    plotDistanceSensorData(distanceSensorData);
 }
 
-QVector<DistanceSensorData> MainWindow::simulateDistanceSensor()
+void MainWindow::calculateForcesSlot()
 {
-    QVector<DistanceSensorData> parsedData;
-    QFile file(kDistanceSensotFilePath);
+    auto [repulsive, attractive, total] = _solver.calculateForces();
 
-    if (!file.open(QIODevice::ReadOnly))
+    chart->removeAllSeries();
+    QLineSeries* repulsiveSeries = new QLineSeries(chart);
+    repulsiveSeries->setName("F_Rep(Teta)");
+    for (auto& item : repulsive)
     {
-        qWarning() << "failed to open file:" << file.errorString();
-        return {};
+        repulsiveSeries->append(item.angle, item.distance);
     }
+    chart->addSeries(repulsiveSeries);
 
-    QByteArray rawData = file.readAll();
-
-    QJsonObject jsonObj = QJsonDocument::fromJson(rawData).object();
-    if (jsonObj.contains(kDataKey) && jsonObj[kDataKey].isArray())
+    QLineSeries* attractiveSeries = new QLineSeries(chart);
+    attractiveSeries->setName("F_Attr(Teta)");
+    for (auto& item : attractive)
     {
-        qInfo() << "parsing json...";
-        QJsonArray array = jsonObj[kDataKey].toArray();
-
-        for (int idx = 0; idx < array.size(); ++idx)
-        {
-            parsedData.append({array[idx].toObject()[kAngleKey].toInt(),
-                               array[idx].toObject()[kDistanceKey].toDouble()});
-        }
+        attractiveSeries->append(item.angle, item.distance);
     }
-    qInfo() << "Parsing done.";
+    chart->addSeries(attractiveSeries);
 
-    return parsedData;
+    QLineSeries* totalSeries = new QLineSeries(chart);
+    totalSeries->setName("F_Total(Teta)");
+    for (auto& item : total)
+    {
+        totalSeries->append(item.angle, item.distance);
+    }
+    chart->addSeries(totalSeries);
+
+    chart->createDefaultAxes();
+
+    chart->legend()->setVisible(true);
+    chart->legend()->setAlignment(Qt::AlignBottom);
+    chart->axes(Qt::Horizontal).first()->setTitleText("angle");
+    QAbstractAxis* yAxis =  chart->axes(Qt::Vertical).first();
+    yAxis->setTitleText("F_x(Teta[i])");
 }
 
-void MainWindow::plotDistanceSensorData()
+void MainWindow::plotDistanceSensorData(const QVector<DistanceSensorData> &data)
 {
     QLineSeries* threasholdLine = new QLineSeries;
     QLineSeries* distanceSeries = new QLineSeries;
-
     threasholdLine->setName("Threashold distance");
     distanceSeries->setName("distance to obstacle");
 
-    for (auto& item : _distanceSensorData)
+    for (auto& item : data)
     {
-        threasholdLine->append(item.angle, _thresholdDistance);
+        threasholdLine->append(item.angle, SolverParams::_thresholdDistance);
         distanceSeries->append(item.angle, item.distance);
     }
 
-    QChart* chart = new QChart;
+    chart = new QChart;
     chart->addSeries(threasholdLine);
     chart->addSeries(distanceSeries);
 
-
-    QChartView* chartView = new QChartView(chart);
+    chartView = new QChartView(chart);
     chartView->setRenderHint(QPainter::Antialiasing);
     chart->createDefaultAxes();
 
@@ -94,7 +101,7 @@ void MainWindow::plotDistanceSensorData()
     chart->axes(Qt::Horizontal).first()->setTitleText("angle");
     QAbstractAxis* yAxis =  chart->axes(Qt::Vertical).first();
     yAxis->setTitleText("distance, m");
-    yAxis->setMin(0);
+
     this->setCentralWidget(chartView);
 }
 
@@ -102,6 +109,7 @@ void MainWindow::createMenus()
 {
     _distanceSensorMenu = menuBar()->addMenu(tr("Distance sensor"));
     _distanceSensorMenu->addAction(_simulateSensorAct);
+    _distanceSensorMenu->addAction(_calculateForcesAct);
 }
 
 void MainWindow::createActions()
@@ -109,5 +117,9 @@ void MainWindow::createActions()
     _simulateSensorAct = new QAction(tr("Simulate data"), this);
     _simulateSensorAct->setToolTip(tr("Reads distance data from json file"));
     connect(_simulateSensorAct, &QAction::triggered, this, &MainWindow::simulateDistanceSensorSlot);
+
+    _calculateForcesAct = new QAction(tr("Calculate forces"));
+    _calculateForcesAct->setToolTip(tr("Calculate f_rep, F_attr and F_total"));
+    connect(_calculateForcesAct, &QAction::triggered, this, &MainWindow::calculateForcesSlot);
 }
 
