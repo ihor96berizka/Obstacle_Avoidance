@@ -11,12 +11,8 @@ namespace
 {
 const char* kDistanceSensotFilePath{":/distance_sensor/distance_sensor_data.json"};//obstacles [20;65], [71;108]
   //  ":/distance_sensor/distance_sensor_data_test.json"}; //obstacle is on angles[71;108]
-
-
-const char* kDataKey{"Data"};
-const char* kAngleKey{"angle"};
-const char* kDistanceKey{"distance"};
 } // namespace
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -35,15 +31,15 @@ MainWindow::~MainWindow()
 
 void MainWindow::simulateDistanceSensorSlot()
 {
-    _distanceSensorData = simulateDistanceSensor();
-    plotDistanceSensorData();
+    _solver.init(kDistanceSensotFilePath);
+    auto distanceSensorData = _solver.getSensorData();
+
+    plotDistanceSensorData(distanceSensorData);
 }
 
 void MainWindow::calculateForcesSlot()
 {
-    auto repulsive =  calculateRepulsiveField();
-    auto attractive = calculateAttractiveField();
-    auto total = calculateTotalField(repulsive, attractive);
+    auto [repulsive, attractive, total] = _solver.calculateForces();
 
     chart->removeAllSeries();
     QLineSeries* repulsiveSeries = new QLineSeries(chart);
@@ -79,46 +75,16 @@ void MainWindow::calculateForcesSlot()
     yAxis->setTitleText("F_x(Teta[i])");
 }
 
-QVector<DistanceSensorData> MainWindow::simulateDistanceSensor()
-{
-    QVector<DistanceSensorData> parsedData;
-    QFile file(kDistanceSensotFilePath);
-
-    if (!file.open(QIODevice::ReadOnly))
-    {
-        qWarning() << "failed to open file:" << file.errorString();
-        return {};
-    }
-
-    QByteArray rawData = file.readAll();
-
-    QJsonObject jsonObj = QJsonDocument::fromJson(rawData).object();
-    if (jsonObj.contains(kDataKey) && jsonObj[kDataKey].isArray())
-    {
-        qInfo() << "parsing json...";
-        QJsonArray array = jsonObj[kDataKey].toArray();
-
-        for (int idx = 0; idx < array.size(); ++idx)
-        {
-            parsedData.append({array[idx].toObject()[kAngleKey].toInt(),
-                               array[idx].toObject()[kDistanceKey].toDouble()});
-        }
-    }
-    qInfo() << "Parsing done.";
-
-    return parsedData;
-}
-
-void MainWindow::plotDistanceSensorData()
+void MainWindow::plotDistanceSensorData(const QVector<DistanceSensorData> &data)
 {
     QLineSeries* threasholdLine = new QLineSeries;
     QLineSeries* distanceSeries = new QLineSeries;
     threasholdLine->setName("Threashold distance");
     distanceSeries->setName("distance to obstacle");
 
-    for (auto& item : _distanceSensorData)
+    for (auto& item : data)
     {
-        threasholdLine->append(item.angle, _thresholdDistance);
+        threasholdLine->append(item.angle, SolverParams::_thresholdDistance);
         distanceSeries->append(item.angle, item.distance);
     }
 
@@ -137,167 +103,6 @@ void MainWindow::plotDistanceSensorData()
     yAxis->setTitleText("distance, m");
 
     this->setCentralWidget(chartView);
-}
-
-QVector<Obstacle> MainWindow::enlargeObstacles(const double w_robot)
-{
-    //  find obstacles in distance sensors data.
-    auto obstacles = findObstacles();
-
-    //calculate d[k] and phi[k] - for (6)
-    calculateObstaclesAverages(obstacles);
-
-    for (auto& item : obstacles)
-    {
-        item.averageAngle = 2 * std::atan2(item.averageDistance * std::tan(item.averageAngle / 2.0) + w_robot / 2.0,
-                                           item.averageDistance); // (6)
-    }
-    return obstacles;
-}
-
-QVector<Obstacle> MainWindow::findObstacles()
-{
-    QVector<Obstacle> obstacles;
-    QVector<DistanceSensorData> filteredDataWithObtstacles;
-    // copy data from distance sensor if distance < threashold.
-    // this means that obstacle was detected on that angle.
-    std::copy_if(_distanceSensorData.begin(), _distanceSensorData.end(),
-                 std::back_inserter(filteredDataWithObtstacles),
-                 [](const auto& item)
-    {
-        return item.distance < _thresholdDistance;
-    });
-
-    for (auto& item : filteredDataWithObtstacles)
-    {
-        qInfo() << "angle: " << item.angle << " | distance:" << item.distance;
-    }
-
-    // detect each obstacle and gather angles occupied by each obstacle.
-    int obstacle_start_idx = 0;
-    for (int idx = 0; idx < filteredDataWithObtstacles.size() - 1; ++idx)
-    {
-        qInfo() << "filteredDataWithObtstacles[idx+1].angle - filteredDataWithObtstacles[idx].angle > 1 : "
-                << (filteredDataWithObtstacles[idx+1].angle - filteredDataWithObtstacles[idx].angle > 1);
-        qInfo() <<"idx: " << idx;
-        if (filteredDataWithObtstacles[idx+1].angle - filteredDataWithObtstacles[idx].angle > 1
-            ||
-            idx + 1 == filteredDataWithObtstacles.size() - 1 // check if this is last item in vector
-            )
-        {
-            int obstacle_end_idx = idx;
-            // this is last angle occupied by current obstacle.
-            // create Obstacle obj and push to vector
-            //special handling of last item(obstacle)
-            if (idx + 1 == filteredDataWithObtstacles.size()-1)
-            {
-                obstacle_end_idx = idx + 1;
-            }
-            Obstacle obstacle;
-            for (int k = obstacle_start_idx; k <= obstacle_end_idx; ++k)
-            {
-                obstacle.angles.push_back(filteredDataWithObtstacles[k].angle);
-                obstacle.distances.push_back(filteredDataWithObtstacles[k].distance);
-            }
-            obstacles.push_back(obstacle);
-            obstacle_start_idx = idx + 1;
-        }
-    }
-    qInfo() << "------obstacles detected----------";
-    qInfo() << "Number of obstacles: " << obstacles.size();
-    for (int k = 0; k < obstacles.size(); ++k)
-    {
-        qInfo() << "Obstacle # " << k;
-        for (int i = 0; i < obstacles[k].angles.size(); ++i)
-        {
-            qInfo() << "angle: " << obstacles[k].angles[i] << " | distance:" << obstacles[k].distances[i];
-        }
-    }
-
-    return obstacles;
-}
-
-void MainWindow::calculateObstaclesAverages(QVector<Obstacle> &obstacles)
-{
-    for (auto& item : obstacles)
-    {
-        double averageDistance = std::accumulate(item.distances.begin(), item.distances.end(), 0.0) / item.distances.size();
-        double averageAngle = item.angles.last() - item.angles.first();
-                //std::accumulate(item.angles.begin(), item.angles.end(), 0.0) / item.angles.size();
-        item.averageDistance = averageDistance;
-        item.averageAngle = averageAngle;
-
-        qInfo() << "Average dist: " << averageDistance << " | avg angle: " << item.averageAngle;
-    }
-}
-
-QVector<DistanceSensorData> MainWindow::calculateRepulsiveField()
-{
-    auto obstacles = enlargeObstacles(_w_robot);
-
-    // (9)
-    for (int k = 0; k < obstacles.size(); ++k)
-    {
-        double d = _distance_sensor_range - (obstacles[k].averageDistance);
-        obstacles[k].a =  d * std::exp(0.5);
-        qInfo() << "A[" << k << "]=" << obstacles[k].a;
-    }
-
-    // (10)
-    QVector<DistanceSensorData> repulsiveFieldData;
-    for (int i = 0; i < _distanceSensorData.size(); ++i) // distance sensor data is used, cause it holds angles.
-    {
-        //qInfo() << "calculating...";
-        double sum = 0;
-        for (int k = 0; k < obstacles.size(); ++k)
-        {
-            int midIdx = obstacles[k].angles.size() / 2;
-            double sigma = obstacles[k].averageAngle / 2.0;  // half of the angle occupied by obstacle
-            //qInfo() << "angle: " << obstacles[k].averageAngle;
-            //qInfo() << "midIDx: " << midIdx;
-            qInfo() << "sigma/: " << sigma;
-
-            double Teta_k = obstacles[k].angles[midIdx];  //center angle of the obstacle
-            //qInfo() << "teta[0]: " << Teta_k;
-            double underExp = -(std::pow(Teta_k - _distanceSensorData[i].angle, 2))
-                    /
-                    2.0 * std::pow(sigma, 2);
-            //qInfo() << "A[k]: " << obstacles[k].a;
-            double val = obstacles[k].a * std::exp(underExp);
-            sum += val;
-        }
-        qInfo() << "angle: " << _distanceSensorData[i].angle << "val = " << sum;
-        repulsiveFieldData.push_back({_distanceSensorData[i].angle, sum});
-    }
-
-    qInfo() << "items:" << repulsiveFieldData.size();
-
-    return repulsiveFieldData;
-}
-
-QVector<DistanceSensorData> MainWindow::calculateAttractiveField()
-{
-    QVector<DistanceSensorData> attrFieldData;
-    for (int i = 0; i < _distanceSensorData.size(); ++i) // distance sensor data is used, cause it holds angles.
-    {
-        double value = _gamma * abs(_teta_goal - _distanceSensorData[i].angle);
-        attrFieldData.push_back({_distanceSensorData[i].angle, value});
-    }
-
-    return attrFieldData;
-}
-
-QVector<DistanceSensorData> MainWindow::calculateTotalField(const QVector<DistanceSensorData> &repulsive,
-                                                            const QVector<DistanceSensorData> &attractive)
-{
-    QVector<DistanceSensorData> total;
-    for (int idx = 0; idx < repulsive.size(); ++idx)
-    {
-        total.push_back({repulsive[idx].angle,
-                         repulsive[idx].distance + attractive[idx].distance});
-    }
-
-    return total;
 }
 
 void MainWindow::createMenus()
