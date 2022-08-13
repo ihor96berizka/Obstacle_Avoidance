@@ -59,6 +59,44 @@ Forces Solver::calculateForces()
     return {repulsive, attractive, total};
 }
 
+QVector<QVector<DistanceSensorData> > Solver::getRepulsiceComponents()
+{
+    auto obstacles = enlargeObstacles(SolverParams::_w_robot);
+    QVector<QVector<DistanceSensorData> > components(obstacles.size());
+
+    // (9)
+    for (int k = 0; k < obstacles.size(); ++k)
+    {
+        double d = SolverParams::_distance_sensor_range - (obstacles[k].averageDistance);
+        obstacles[k].a =  d * std::exp(0.5);
+        qInfo() << "A[" << k << "]=" << obstacles[k].a;
+    }
+
+    // (10)
+    for (int i = 0; i < _distanceSensorData.size(); ++i) // distance sensor data is used, cause it holds angles.
+    {
+        for (int k = 0; k < obstacles.size(); ++k)
+        {
+            int midIdx = obstacles[k].angles.size() / 2;
+            double sigma = obstacles[k].averageAngle / 2.0;  // half of the angle occupied by obstacle
+            //qInfo() << "angle: " << obstacles[k].averageAngle;
+            //qInfo() << "midIDx: " << midIdx;
+            qInfo() << "sigma/: " << sigma;
+
+            double Teta_k = obstacles[k].angles[midIdx];  //center angle of the obstacle
+            //qInfo() << "teta[0]: " << Teta_k;
+            double underExp = -(std::pow(Teta_k - _distanceSensorData[i].angle, 2))
+                    /
+                    2.0 * std::pow(sigma, 2);
+            //qInfo() << "A[k]: " << obstacles[k].a;
+            double val = obstacles[k].a * std::exp(underExp);
+            components[k].push_back({_distanceSensorData[i].angle, val});
+        }
+    }
+
+    return components;
+}
+
 QVector<Obstacle> Solver::enlargeObstacles(const double w_robot)
 {
     //  find obstacles in distance sensors data.

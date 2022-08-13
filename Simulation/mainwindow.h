@@ -26,7 +26,7 @@ private slots:
 private:
     // data processing helpers
     void plotDistanceSensorData(const QVector<DistanceSensorData>& data);
-
+    void plotRepulsiveComponents();
     //building gui functions
     void createMenus();
     void createActions();

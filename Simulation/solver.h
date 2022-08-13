@@ -42,6 +42,7 @@ public:
     void init(const QString& path);
     QVector<DistanceSensorData> getSensorData() const;
     Forces calculateForces();
+    QVector<QVector<DistanceSensorData>> getRepulsiceComponents();
 
 private:
     QVector<Obstacle> enlargeObstacles(const double w_robot);

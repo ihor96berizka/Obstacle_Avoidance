@@ -1,9 +1,6 @@
 ﻿#include "mainwindow.h"
 #include "ui_mainwindow.h"
 
-#include <random>
-#include <algorithm>
-
 #include <QJsonObject>
 #include <QFile>
 
@@ -38,7 +35,7 @@ void MainWindow::simulateDistanceSensorSlot()
 }
 
 void MainWindow::calculateForcesSlot()
-{
+{/*
     auto [repulsive, attractive, total] = _solver.calculateForces();
 
     chart->removeAllSeries();
@@ -73,6 +70,8 @@ void MainWindow::calculateForcesSlot()
     chart->axes(Qt::Horizontal).first()->setTitleText("angle");
     QAbstractAxis* yAxis =  chart->axes(Qt::Vertical).first();
     yAxis->setTitleText("F_x(Teta[i])");
+    */
+    plotRepulsiveComponents();
 }
 
 void MainWindow::plotDistanceSensorData(const QVector<DistanceSensorData> &data)
@@ -103,6 +102,32 @@ void MainWindow::plotDistanceSensorData(const QVector<DistanceSensorData> &data)
     yAxis->setTitleText("distance, m");
 
     this->setCentralWidget(chartView);
+}
+
+void MainWindow::plotRepulsiveComponents()
+{
+    auto components = _solver.getRepulsiceComponents();
+
+    chart->removeAllSeries();
+
+    for (int k = 0; k < components.size(); ++k)
+    {
+        QLineSeries* repulsiveSeries = new QLineSeries(chart);
+        repulsiveSeries->setName("F_Rep" + QString::number(k) + " (Teta)");
+        for (auto& item : components[k])
+        {
+            repulsiveSeries->append(item.angle, item.distance);
+        }
+        chart->addSeries(repulsiveSeries);
+    }
+
+    chart->createDefaultAxes();
+
+    chart->legend()->setVisible(true);
+    chart->legend()->setAlignment(Qt::AlignBottom);
+    chart->axes(Qt::Horizontal).first()->setTitleText("angle");
+    QAbstractAxis* yAxis =  chart->axes(Qt::Vertical).first();
+    yAxis->setTitleText("F_x(Teta[i])");
 }
 
 void MainWindow::createMenus()
