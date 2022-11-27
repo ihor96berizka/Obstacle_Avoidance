@@ -1,8 +1,8 @@
 #ifndef SOLVER_H
 #define SOLVER_H
 
-#include <QString>
-#include <QVector>
+#include <string>
+#include <vector>
 
 struct DistanceSensorData
 {
@@ -12,8 +12,8 @@ struct DistanceSensorData
 
 struct Obstacle
 {
-    QVector<double> distances;
-    QVector<double> angles;
+    std::vector<double> distances;
+    std::vector<double> angles;
     double averageDistance;
     double averageAngle;
     double a;
@@ -30,31 +30,31 @@ struct SolverParams
 
 struct Forces
 {
-    QVector<DistanceSensorData> repulsiveFieldData;
-    QVector<DistanceSensorData> attrFieldData;
-    QVector<DistanceSensorData> totalFieldData;
+    std::vector<DistanceSensorData> repulsiveFieldData;
+    std::vector<DistanceSensorData> attrFieldData;
+    std::vector<DistanceSensorData> totalFieldData;
 };
 
 class Solver
 {
 public:
     Solver();
-    void init(const QString& path);
-    QVector<DistanceSensorData> getSensorData() const;
+    void init(const std::string& path);
+    std::vector<DistanceSensorData> getSensorData() const;
     Forces calculateForces();
-    QVector<QVector<DistanceSensorData>> getRepulsiceComponents();
+    std::vector<std::vector<DistanceSensorData>> getRepulsiceComponents();
 
 private:
-    QVector<Obstacle> enlargeObstacles(const double w_robot);
-    QVector<Obstacle> findObstacles();
-    void calculateObstaclesAverages(QVector<Obstacle> &obstacles);
+    std::vector<Obstacle> enlargeObstacles(const double w_robot);
+    std::vector<Obstacle> findObstacles();
+    void calculateObstaclesAverages(std::vector<Obstacle> &obstacles);
 
-    QVector<DistanceSensorData> calculateRepulsiveField();
-    QVector<DistanceSensorData> calculateAttractiveField();
-    QVector<DistanceSensorData> calculateTotalField(const QVector<DistanceSensorData>& repulsive,
-                                                    const QVector<DistanceSensorData>& attractive);
+    std::vector<DistanceSensorData> calculateRepulsiveField();
+    std::vector<DistanceSensorData> calculateAttractiveField();
+    std::vector<DistanceSensorData> calculateTotalField(const std::vector<DistanceSensorData>& repulsive,
+                                                        const std::vector<DistanceSensorData>& attractive);
 private:
-    QVector<DistanceSensorData> _distanceSensorData;
+    std::vector<DistanceSensorData> _distanceSensorData;
 };
 
 #endif // SOLVER_H

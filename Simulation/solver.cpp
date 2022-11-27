@@ -17,10 +17,10 @@ Solver::Solver()
 
 }
 
-void Solver::init(const QString &path)
+void Solver::init(const std::string &path)
 {
     _distanceSensorData.clear();
-    QFile file(path);
+    QFile file(path.c_str());
 
     if (!file.open(QIODevice::ReadOnly))
     {
@@ -38,14 +38,14 @@ void Solver::init(const QString &path)
 
         for (int idx = 0; idx < array.size(); ++idx)
         {
-            _distanceSensorData.append({array[idx].toObject()[kAngleKey].toInt(),
+            _distanceSensorData.push_back({array[idx].toObject()[kAngleKey].toInt(),
                                array[idx].toObject()[kDistanceKey].toDouble()});
         }
     }
     qInfo() << "Parsing done.";
 }
 
-QVector<DistanceSensorData> Solver::getSensorData() const
+std::vector<DistanceSensorData> Solver::getSensorData() const
 {
     return _distanceSensorData;
 }
@@ -59,13 +59,13 @@ Forces Solver::calculateForces()
     return {repulsive, attractive, total};
 }
 
-QVector<QVector<DistanceSensorData> > Solver::getRepulsiceComponents()
+std::vector<std::vector<DistanceSensorData> > Solver::getRepulsiceComponents()
 {
     auto obstacles = enlargeObstacles(SolverParams::_w_robot);
-    QVector<QVector<DistanceSensorData> > components(obstacles.size());
+    std::vector<std::vector<DistanceSensorData>> components(obstacles.size());
 
     // (9)
-    for (int k = 0; k < obstacles.size(); ++k)
+    for (size_t k = 0; k < obstacles.size(); ++k)
     {
         double d = SolverParams::_distance_sensor_range - (obstacles[k].averageDistance);
         obstacles[k].a =  d * std::exp(0.5);
@@ -73,9 +73,9 @@ QVector<QVector<DistanceSensorData> > Solver::getRepulsiceComponents()
     }
 
     // (10)
-    for (int i = 0; i < _distanceSensorData.size(); ++i) // distance sensor data is used, cause it holds angles.
+    for (size_t i = 0; i < _distanceSensorData.size(); ++i) // distance sensor data is used, cause it holds angles.
     {
-        for (int k = 0; k < obstacles.size(); ++k)
+        for (size_t k = 0; k < obstacles.size(); ++k)
         {
             int midIdx = obstacles[k].angles.size() / 2;
             double sigma = obstacles[k].averageAngle / 2.0;  // half of the angle occupied by obstacle
@@ -97,7 +97,7 @@ QVector<QVector<DistanceSensorData> > Solver::getRepulsiceComponents()
     return components;
 }
 
-QVector<Obstacle> Solver::enlargeObstacles(const double w_robot)
+std::vector<Obstacle> Solver::enlargeObstacles(const double w_robot)
 {
     //  find obstacles in distance sensors data.
     auto obstacles = findObstacles();
@@ -113,10 +113,10 @@ QVector<Obstacle> Solver::enlargeObstacles(const double w_robot)
     return obstacles;
 }
 
-QVector<Obstacle> Solver::findObstacles()
+std::vector<Obstacle> Solver::findObstacles()
 {
-    QVector<Obstacle> obstacles;
-    QVector<DistanceSensorData> filteredDataWithObtstacles;
+    std::vector<Obstacle> obstacles;
+    std::vector<DistanceSensorData> filteredDataWithObtstacles;
     // copy data from distance sensor if distance < threashold.
     // this means that obstacle was detected on that angle.
     std::copy_if(_distanceSensorData.begin(), _distanceSensorData.end(),
@@ -132,8 +132,8 @@ QVector<Obstacle> Solver::findObstacles()
     }
 
     // detect each obstacle and gather angles occupied by each obstacle.
-    int obstacle_start_idx = 0;
-    for (int idx = 0; idx < filteredDataWithObtstacles.size() - 1; ++idx)
+    size_t obstacle_start_idx = 0;
+    for (size_t idx = 0; idx < filteredDataWithObtstacles.size() - 1; ++idx)
     {
         qInfo() << "filteredDataWithObtstacles[idx+1].angle - filteredDataWithObtstacles[idx].angle > 1 : "
                 << (filteredDataWithObtstacles[idx+1].angle - filteredDataWithObtstacles[idx].angle > 1);
@@ -163,10 +163,10 @@ QVector<Obstacle> Solver::findObstacles()
     }
     qInfo() << "------obstacles detected----------";
     qInfo() << "Number of obstacles: " << obstacles.size();
-    for (int k = 0; k < obstacles.size(); ++k)
+    for (size_t k = 0; k < obstacles.size(); ++k)
     {
         qInfo() << "Obstacle # " << k;
-        for (int i = 0; i < obstacles[k].angles.size(); ++i)
+        for (size_t i = 0; i < obstacles[k].angles.size(); ++i)
         {
             qInfo() << "angle: " << obstacles[k].angles[i] << " | distance:" << obstacles[k].distances[i];
         }
@@ -175,12 +175,12 @@ QVector<Obstacle> Solver::findObstacles()
     return obstacles;
 }
 
-void Solver::calculateObstaclesAverages(QVector<Obstacle> &obstacles)
+void Solver::calculateObstaclesAverages(std::vector<Obstacle> &obstacles)
 {
     for (auto& item : obstacles)
     {
         double averageDistance = std::accumulate(item.distances.begin(), item.distances.end(), 0.0) / item.distances.size();
-        double averageAngle = item.angles.last() - item.angles.first();
+        double averageAngle = item.angles.at(item.angles.size()-1) - item.angles.at(0);
                 //std::accumulate(item.angles.begin(), item.angles.end(), 0.0) / item.angles.size();
         item.averageDistance = averageDistance;
         item.averageAngle = averageAngle;
@@ -189,12 +189,12 @@ void Solver::calculateObstaclesAverages(QVector<Obstacle> &obstacles)
     }
 }
 
-QVector<DistanceSensorData> Solver::calculateRepulsiveField()
+std::vector<DistanceSensorData> Solver::calculateRepulsiveField()
 {
     auto obstacles = enlargeObstacles(SolverParams::_w_robot);
 
     // (9)
-    for (int k = 0; k < obstacles.size(); ++k)
+    for (size_t k = 0; k < obstacles.size(); ++k)
     {
         double d = SolverParams::_distance_sensor_range - (obstacles[k].averageDistance);
         obstacles[k].a =  d * std::exp(0.5);
@@ -202,12 +202,12 @@ QVector<DistanceSensorData> Solver::calculateRepulsiveField()
     }
 
     // (10)
-    QVector<DistanceSensorData> repulsiveFieldData;
-    for (int i = 0; i < _distanceSensorData.size(); ++i) // distance sensor data is used, cause it holds angles.
+    std::vector<DistanceSensorData> repulsiveFieldData;
+    for (size_t i = 0; i < _distanceSensorData.size(); ++i) // distance sensor data is used, cause it holds angles.
     {
         //qInfo() << "calculating...";
         double sum = 0;
-        for (int k = 0; k < obstacles.size(); ++k)
+        for (size_t k = 0; k < obstacles.size(); ++k)
         {
             int midIdx = obstacles[k].angles.size() / 2;
             double sigma = obstacles[k].averageAngle / 2.0;  // half of the angle occupied by obstacle
@@ -233,10 +233,10 @@ QVector<DistanceSensorData> Solver::calculateRepulsiveField()
     return repulsiveFieldData;
 }
 
-QVector<DistanceSensorData> Solver::calculateAttractiveField()
+std::vector<DistanceSensorData> Solver::calculateAttractiveField()
 {
-    QVector<DistanceSensorData> attrFieldData;
-    for (int i = 0; i < _distanceSensorData.size(); ++i) // distance sensor data is used, cause it holds angles.
+    std::vector<DistanceSensorData> attrFieldData;
+    for (size_t i = 0; i < _distanceSensorData.size(); ++i) // distance sensor data is used, cause it holds angles.
     {
         double value = SolverParams::_gamma * abs(SolverParams::_teta_goal - _distanceSensorData[i].angle);
         attrFieldData.push_back({_distanceSensorData[i].angle, value});
@@ -245,11 +245,11 @@ QVector<DistanceSensorData> Solver::calculateAttractiveField()
     return attrFieldData;
 }
 
-QVector<DistanceSensorData> Solver::calculateTotalField(const QVector<DistanceSensorData> &repulsive,
-                                                        const QVector<DistanceSensorData> &attractive)
+std::vector<DistanceSensorData> Solver::calculateTotalField(const std::vector<DistanceSensorData> &repulsive,
+                                                            const std::vector<DistanceSensorData> &attractive)
 {
-    QVector<DistanceSensorData> total;
-    for (int idx = 0; idx < repulsive.size(); ++idx)
+    std::vector<DistanceSensorData> total;
+    for (size_t idx = 0; idx < repulsive.size(); ++idx)
     {
         total.push_back({repulsive[idx].angle,
                          repulsive[idx].distance + attractive[idx].distance});

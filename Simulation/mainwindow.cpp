@@ -74,7 +74,7 @@ void MainWindow::calculateForcesSlot()
     plotRepulsiveComponents();
 }
 
-void MainWindow::plotDistanceSensorData(const QVector<DistanceSensorData> &data)
+void MainWindow::plotDistanceSensorData(const std::vector<DistanceSensorData> &data)
 {
     QLineSeries* threasholdLine = new QLineSeries;
     QLineSeries* distanceSeries = new QLineSeries;
@@ -110,7 +110,7 @@ void MainWindow::plotRepulsiveComponents()
 
     chart->removeAllSeries();
 
-    for (int k = 0; k < components.size(); ++k)
+    for (size_t k = 0; k < components.size(); ++k)
     {
         QLineSeries* repulsiveSeries = new QLineSeries(chart);
         repulsiveSeries->setName("F_Rep" + QString::number(k) + " (Teta)");

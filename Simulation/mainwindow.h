@@ -25,7 +25,7 @@ private slots:
     void calculateForcesSlot();
 private:
     // data processing helpers
-    void plotDistanceSensorData(const QVector<DistanceSensorData>& data);
+    void plotDistanceSensorData(const std::vector<DistanceSensorData>& data);
     void plotRepulsiveComponents();
     //building gui functions
     void createMenus();
