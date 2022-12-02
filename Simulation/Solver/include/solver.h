@@ -1,14 +1,14 @@
 #ifndef SOLVER_H
 #define SOLVER_H
 
+#include <memory>
 #include <string>
 #include <vector>
 
-struct DistanceSensorData
+#include "idataprovider.h"
+
+namespace Solver
 {
-    int angle;
-    double distance;
-};
 
 struct Obstacle
 {
@@ -34,27 +34,37 @@ struct Forces
     std::vector<DistanceSensorData> attrFieldData;
     std::vector<DistanceSensorData> totalFieldData;
 };
-
+/*
+* Usage: Create instance of Solver.
+* Flow:
+*   init(provider)
+*   calculateHeadingAngle()
+* calculateHeadingAngle() will wait for new chuck of data and then perform calculations.
+* It should be called in a working loop in user code.
+*/
 class Solver
 {
 public:
-    Solver();
-    void init(const std::string& path);
-    std::vector<DistanceSensorData> getSensorData() const;
-    Forces calculateForces();
-    std::vector<std::vector<DistanceSensorData>> getRepulsiceComponents();
+    void init(std::unique_ptr<IDataProvider> dataProvider);
+    std::vector<DistanceSensorData> getSensorData();
+    Forces getForces();
+    int calculateHeadingAngle();
 
 private:
     std::vector<Obstacle> enlargeObstacles(const double w_robot);
     std::vector<Obstacle> findObstacles();
+    void calculateForces();
     void calculateObstaclesAverages(std::vector<Obstacle> &obstacles);
-
+    std::vector<std::vector<DistanceSensorData>> getRepulsiceComponents();
     std::vector<DistanceSensorData> calculateRepulsiveField();
     std::vector<DistanceSensorData> calculateAttractiveField();
     std::vector<DistanceSensorData> calculateTotalField(const std::vector<DistanceSensorData>& repulsive,
                                                         const std::vector<DistanceSensorData>& attractive);
 private:
     std::vector<DistanceSensorData> _distanceSensorData;
+    Forces _forces;
+    std::unique_ptr<IDataProvider> _dataProvider;
 };
 
+} //namespace Solver
 #endif // SOLVER_H

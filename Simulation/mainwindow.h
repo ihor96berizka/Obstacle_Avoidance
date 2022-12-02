@@ -2,11 +2,9 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-
 #include <QtCharts>
 
 #include "solver.h"
-
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -25,8 +23,8 @@ private slots:
     void calculateForcesSlot();
 private:
     // data processing helpers
-    void plotDistanceSensorData(const std::vector<DistanceSensorData>& data);
-    void plotRepulsiveComponents();
+    void plotDistanceSensorData(const std::vector<Solver::DistanceSensorData>& data);
+    void plotAllForces();
     //building gui functions
     void createMenus();
     void createActions();
@@ -42,6 +40,7 @@ private:
     QChartView* chartView;
 
     // data primitives
-    Solver _solver;
+    Solver::Solver _solver;
+    Solver::Forces _forces;
 };
 #endif // MAINWINDOW_H

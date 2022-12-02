@@ -4,6 +4,8 @@
 #include <QJsonObject>
 #include <QFile>
 
+#include "jsondataprovider.h"
+
 namespace
 {
 const char* kDistanceSensotFilePath{":/distance_sensor/distance_sensor_data.json"};//obstacles [20;65], [71;108]
@@ -18,6 +20,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     createActions();
     createMenus();
+    auto dataproviderPtr = std::make_unique<JsonDataProvider>(kDistanceSensotFilePath);
+    _solver.init(std::move(dataproviderPtr));
 }
 
 MainWindow::~MainWindow()
@@ -28,53 +32,19 @@ MainWindow::~MainWindow()
 
 void MainWindow::simulateDistanceSensorSlot()
 {
-    _solver.init(kDistanceSensotFilePath);
     auto distanceSensorData = _solver.getSensorData();
-
     plotDistanceSensorData(distanceSensorData);
 }
 
 void MainWindow::calculateForcesSlot()
-{/*
-    auto [repulsive, attractive, total] = _solver.calculateForces();
-
-    chart->removeAllSeries();
-    QLineSeries* repulsiveSeries = new QLineSeries(chart);
-    repulsiveSeries->setName("F_Rep(Teta)");
-    for (auto& item : repulsive)
-    {
-        repulsiveSeries->append(item.angle, item.distance);
-    }
-    chart->addSeries(repulsiveSeries);
-
-    QLineSeries* attractiveSeries = new QLineSeries(chart);
-    attractiveSeries->setName("F_Attr(Teta)");
-    for (auto& item : attractive)
-    {
-        attractiveSeries->append(item.angle, item.distance);
-    }
-    chart->addSeries(attractiveSeries);
-
-    QLineSeries* totalSeries = new QLineSeries(chart);
-    totalSeries->setName("F_Total(Teta)");
-    for (auto& item : total)
-    {
-        totalSeries->append(item.angle, item.distance);
-    }
-    chart->addSeries(totalSeries);
-
-    chart->createDefaultAxes();
-
-    chart->legend()->setVisible(true);
-    chart->legend()->setAlignment(Qt::AlignBottom);
-    chart->axes(Qt::Horizontal).first()->setTitleText("angle");
-    QAbstractAxis* yAxis =  chart->axes(Qt::Vertical).first();
-    yAxis->setTitleText("F_x(Teta[i])");
-    */
-    plotRepulsiveComponents();
+{
+    int angle = _solver.calculateHeadingAngle();
+    _forces = _solver.getForces();
+    qInfo() << "-----Angle: " << angle;
+    plotAllForces();
 }
 
-void MainWindow::plotDistanceSensorData(const std::vector<DistanceSensorData> &data)
+void MainWindow::plotDistanceSensorData(const std::vector<Solver::DistanceSensorData> &data)
 {
     QLineSeries* threasholdLine = new QLineSeries;
     QLineSeries* distanceSeries = new QLineSeries;
@@ -83,7 +53,7 @@ void MainWindow::plotDistanceSensorData(const std::vector<DistanceSensorData> &d
 
     for (auto& item : data)
     {
-        threasholdLine->append(item.angle, SolverParams::_thresholdDistance);
+        threasholdLine->append(item.angle, Solver::SolverParams::_thresholdDistance);
         distanceSeries->append(item.angle, item.distance);
     }
 
@@ -104,25 +74,32 @@ void MainWindow::plotDistanceSensorData(const std::vector<DistanceSensorData> &d
     this->setCentralWidget(chartView);
 }
 
-void MainWindow::plotRepulsiveComponents()
+void MainWindow::plotAllForces()
 {
-    auto components = _solver.getRepulsiceComponents();
-
+    auto [repulsive, attractive, total] = _forces;
     chart->removeAllSeries();
-
-    for (size_t k = 0; k < components.size(); ++k)
+    QLineSeries* repulsiveSeries = new QLineSeries(chart);
+    repulsiveSeries->setName("F_Rep(Teta)");
+    for (auto& item : repulsive)
     {
-        QLineSeries* repulsiveSeries = new QLineSeries(chart);
-        repulsiveSeries->setName("F_Rep" + QString::number(k) + " (Teta)");
-        for (auto& item : components[k])
-        {
-            repulsiveSeries->append(item.angle, item.distance);
-        }
-        chart->addSeries(repulsiveSeries);
+        repulsiveSeries->append(item.angle, item.distance);
     }
-
+    chart->addSeries(repulsiveSeries);
+    QLineSeries* attractiveSeries = new QLineSeries(chart);
+    attractiveSeries->setName("F_Attr(Teta)");
+    for (auto& item : attractive)
+    {
+        attractiveSeries->append(item.angle, item.distance);
+    }
+    chart->addSeries(attractiveSeries);
+    QLineSeries* totalSeries = new QLineSeries(chart);
+    totalSeries->setName("F_Total(Teta)");
+    for (auto& item : total)
+    {
+        totalSeries->append(item.angle, item.distance);
+    }
+    chart->addSeries(totalSeries);
     chart->createDefaultAxes();
-
     chart->legend()->setVisible(true);
     chart->legend()->setAlignment(Qt::AlignBottom);
     chart->axes(Qt::Horizontal).first()->setTitleText("angle");
