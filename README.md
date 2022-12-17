@@ -2,7 +2,7 @@
 
 ## UML Component diagram(raw)
 
-![alternative text](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://raw.https://github.com/ihor96berizka/Obstacle_Avoidance/tree/ros_compliant#readme)
+![alternative text](http://www.plantuml.com/plantuml/proxy?cache=no&src=https://github.com/ihor96berizka/Obstacle_Avoidance/tree/ros_compliant#readme)
 
 @startuml
 
