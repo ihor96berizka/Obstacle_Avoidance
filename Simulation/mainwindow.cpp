@@ -5,6 +5,7 @@
 #include <QFile>
 
 #include "jsondataprovider.h"
+#include "solver.h"
 
 namespace
 {
@@ -21,7 +22,8 @@ MainWindow::MainWindow(QWidget *parent)
     createActions();
     createMenus();
     auto dataproviderPtr = std::make_unique<JsonDataProvider>(kDistanceSensotFilePath);
-    _solver.init(std::move(dataproviderPtr));
+    _solver = std::make_unique<Solver::GussianSolver>();
+    _solver->init(std::move(dataproviderPtr));
 }
 
 MainWindow::~MainWindow()
@@ -32,14 +34,14 @@ MainWindow::~MainWindow()
 
 void MainWindow::simulateDistanceSensorSlot()
 {
-    auto distanceSensorData = _solver.getSensorData();
+    auto distanceSensorData = _solver->getSensorData();
     plotDistanceSensorData(distanceSensorData);
 }
 
 void MainWindow::calculateForcesSlot()
 {
-    int angle = _solver.calculateHeadingAngle();
-    _forces = _solver.getForces();
+    int angle = _solver->calculateHeadingAngle();
+    _forces = _solver->getForces();
     qInfo() << "-----Angle: " << angle;
     plotAllForces();
 }
@@ -111,7 +113,7 @@ void MainWindow::createMenus()
 {
     _distanceSensorMenu = menuBar()->addMenu(tr("Distance sensor"));
     _distanceSensorMenu->addAction(_simulateSensorAct);
-    _distanceSensorMenu->addAction(_calculateForcesAct);
+    _distanceSensorMenu->addAction(_calculateGaussianForcesAct);
 }
 
 void MainWindow::createActions()
@@ -120,8 +122,8 @@ void MainWindow::createActions()
     _simulateSensorAct->setToolTip(tr("Reads distance data from json file"));
     connect(_simulateSensorAct, &QAction::triggered, this, &MainWindow::simulateDistanceSensorSlot);
 
-    _calculateForcesAct = new QAction(tr("Calculate forces"));
-    _calculateForcesAct->setToolTip(tr("Calculate f_rep, F_attr and F_total"));
-    connect(_calculateForcesAct, &QAction::triggered, this, &MainWindow::calculateForcesSlot);
+    _calculateGaussianForcesAct = new QAction(tr("Calculate Gaussian forces"));
+    _calculateGaussianForcesAct->setToolTip(tr("Calculate f_rep, F_attr and F_total"));
+    connect(_calculateGaussianForcesAct, &QAction::triggered, this, &MainWindow::calculateForcesSlot);
 }
 

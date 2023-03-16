@@ -13,10 +13,12 @@ endif()
 include(GNUInstallDirs)
 
 set(SOURCE_FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/isolver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/solver.cpp
 )
 set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/include/idataprovider.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/isolver.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/solver.h
 )
 
@@ -26,6 +28,8 @@ message(${SOURCE_FILES} ${HEADER_FILES})
 add_library(${PROJECT_NAME} SHARED ${SOURCE_FILES} ${HEADER_FILES})
 
 target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/isolver.h)
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER
     ${CMAKE_CURRENT_SOURCE_DIR}/include/solver.h)
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER

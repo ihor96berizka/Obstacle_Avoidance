@@ -7,31 +7,7 @@
 namespace Solver
 {
 
-void Solver::init(std::unique_ptr<IDataProvider> dataProvider)
-{
-    _dataProvider = std::move(dataProvider);
-}
-
-std::vector<DistanceSensorData> Solver::getSensorData()
-{
-    _distanceSensorData = _dataProvider->getSample();
-    return _distanceSensorData;
-}
-
-Forces Solver::getForces()
-{
-    return _forces;
-}
-
-void Solver::calculateForces()
-{
-    auto repulsive =  calculateRepulsiveField();
-    auto attractive = calculateAttractiveField();
-    auto total = calculateTotalField(repulsive, attractive);
-    _forces = {repulsive, attractive, total};
-}
-
-std::vector<std::vector<DistanceSensorData> > Solver::getRepulsiceComponents()
+std::vector<std::vector<DistanceSensorData> > GussianSolver::getRepulsiceComponents()
 {
     auto obstacles = enlargeObstacles(SolverParams::_w_robot);
     std::vector<std::vector<DistanceSensorData>> components(obstacles.size());
@@ -69,7 +45,7 @@ std::vector<std::vector<DistanceSensorData> > Solver::getRepulsiceComponents()
     return components;
 }
 
-int Solver::calculateHeadingAngle()
+int GussianSolver::calculateHeadingAngle()
 {
     _distanceSensorData = _dataProvider->getSample();
     calculateForces();
@@ -80,7 +56,7 @@ int Solver::calculateHeadingAngle()
            })->angle;
 }
 
-std::vector<Obstacle> Solver::enlargeObstacles(const double w_robot)
+std::vector<Obstacle> GussianSolver::enlargeObstacles(const double w_robot)
 {
     //  find obstacles in distance sensors data.
     auto obstacles = findObstacles();
@@ -96,7 +72,7 @@ std::vector<Obstacle> Solver::enlargeObstacles(const double w_robot)
     return obstacles;
 }
 
-std::vector<Obstacle> Solver::findObstacles()
+std::vector<Obstacle> GussianSolver::findObstacles()
 {
     std::vector<Obstacle> obstacles;
     std::vector<DistanceSensorData> filteredDataWithObtstacles;
@@ -158,7 +134,7 @@ std::vector<Obstacle> Solver::findObstacles()
     return obstacles;
 }
 
-void Solver::calculateObstaclesAverages(std::vector<Obstacle> &obstacles)
+void GussianSolver::calculateObstaclesAverages(std::vector<Obstacle> &obstacles)
 {
     for (auto& item : obstacles)
     {
@@ -172,7 +148,7 @@ void Solver::calculateObstaclesAverages(std::vector<Obstacle> &obstacles)
     }
 }
 
-std::vector<DistanceSensorData> Solver::calculateRepulsiveField()
+std::vector<DistanceSensorData> GussianSolver::calculateRepulsiveField()
 {
     auto obstacles = enlargeObstacles(SolverParams::_w_robot);
 
@@ -216,7 +192,7 @@ std::vector<DistanceSensorData> Solver::calculateRepulsiveField()
     return repulsiveFieldData;
 }
 
-std::vector<DistanceSensorData> Solver::calculateAttractiveField()
+std::vector<DistanceSensorData> GussianSolver::calculateAttractiveField()
 {
     std::vector<DistanceSensorData> attrFieldData;
     for (size_t i = 0; i < _distanceSensorData.size(); ++i) // distance sensor data is used, cause it holds angles.
@@ -226,19 +202,6 @@ std::vector<DistanceSensorData> Solver::calculateAttractiveField()
     }
 
     return attrFieldData;
-}
-
-std::vector<DistanceSensorData> Solver::calculateTotalField(const std::vector<DistanceSensorData> &repulsive,
-                                                            const std::vector<DistanceSensorData> &attractive)
-{
-    std::vector<DistanceSensorData> total;
-    for (size_t idx = 0; idx < repulsive.size(); ++idx)
-    {
-        total.push_back({repulsive[idx].angle,
-                         repulsive[idx].distance + attractive[idx].distance});
-    }
-
-    return total;
 }
 
 }  //namespace

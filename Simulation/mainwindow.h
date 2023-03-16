@@ -4,7 +4,7 @@
 #include <QMainWindow>
 #include <QtCharts>
 
-#include "solver.h"
+#include "isolver.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -34,13 +34,13 @@ private:
     Ui::MainWindow *ui;
     QMenu *_distanceSensorMenu;
     QAction *_simulateSensorAct;
-    QAction *_calculateForcesAct;
+    QAction *_calculateGaussianForcesAct;
     // plotting primitives
     QChart* chart;
     QChartView* chartView;
 
     // data primitives
-    Solver::Solver _solver;
+    std::unique_ptr<Solver::ISolver> _solver;
     Solver::Forces _forces;
 };
 #endif // MAINWINDOW_H
