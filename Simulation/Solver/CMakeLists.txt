@@ -15,11 +15,15 @@ include(GNUInstallDirs)
 set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/isolver.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/solver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/linearsolver.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/laplacesolver.cpp
 )
 set(HEADER_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/include/idataprovider.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/isolver.h
     ${CMAKE_CURRENT_SOURCE_DIR}/include/solver.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/linearsolver.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/laplacesolver.h
 )
 
 message("----------------")
@@ -32,6 +36,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER
     ${CMAKE_CURRENT_SOURCE_DIR}/include/isolver.h)
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER
     ${CMAKE_CURRENT_SOURCE_DIR}/include/solver.h)
+set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/linearsolver.h)
+set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/laplacesolver.h)
 set_target_properties(${PROJECT_NAME} PROPERTIES PUBLIC_HEADER
     ${CMAKE_CURRENT_SOURCE_DIR}/include/idataprovider.h)
 

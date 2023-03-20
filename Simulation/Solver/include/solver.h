@@ -7,14 +7,6 @@
 namespace Solver
 {
 
-/*
-* Usage: Create instance of Solver.
-* Flow:
-*   init(provider)
-*   calculateHeadingAngle()
-* calculateHeadingAngle() will wait for new chuck of data and then perform calculations.
-* It should be called in a working loop in user code.
-*/
 class GussianSolver : public ISolver
 {
 public:
@@ -24,10 +16,10 @@ public:
     int calculateHeadingAngle() override;
 
 private:
-    std::vector<Obstacle> enlargeObstacles(const double w_robot);
-    std::vector<Obstacle> findObstacles();
+    //std::vector<Obstacle> enlargeObstacles(const double w_robot);
+    //std::vector<Obstacle> findObstacles();
 
-    void calculateObstaclesAverages(std::vector<Obstacle> &obstacles);
+    //void calculateObstaclesAverages(std::vector<Obstacle> &obstacles);
     std::vector<std::vector<DistanceSensorData>> getRepulsiceComponents();
     std::vector<DistanceSensorData> calculateRepulsiveField() override;
     std::vector<DistanceSensorData> calculateAttractiveField() override;

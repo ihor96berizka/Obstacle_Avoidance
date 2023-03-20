@@ -6,6 +6,8 @@
 
 #include "jsondataprovider.h"
 #include "solver.h"
+#include "linearsolver.h"
+#include "laplacesolver.h"
 
 namespace
 {
@@ -22,7 +24,9 @@ MainWindow::MainWindow(QWidget *parent)
     createActions();
     createMenus();
     auto dataproviderPtr = std::make_unique<JsonDataProvider>(kDistanceSensotFilePath);
-    _solver = std::make_unique<Solver::GussianSolver>();
+    _solver = //std::make_unique<Solver::LinearSolver>();
+            std::make_unique<Solver::GussianSolver>();
+            //std::make_unique<Solver::LaplaceSolver>();
     _solver->init(std::move(dataproviderPtr));
 }
 
@@ -42,7 +46,7 @@ void MainWindow::calculateForcesSlot()
 {
     int angle = _solver->calculateHeadingAngle();
     _forces = _solver->getForces();
-    qInfo() << "-----Angle: " << angle;
+    qInfo() << "-----Angle: " << (angle);
     plotAllForces();
 }
 
@@ -55,8 +59,8 @@ void MainWindow::plotDistanceSensorData(const std::vector<Solver::DistanceSensor
 
     for (auto& item : data)
     {
-        threasholdLine->append(item.angle, Solver::SolverParams::_thresholdDistance);
-        distanceSeries->append(item.angle, item.distance);
+        threasholdLine->append(/*Solver::RadiansToDegrees*/(item.angle), Solver::SolverParams::_thresholdDistance);
+        distanceSeries->append(/*Solver::RadiansToDegrees*/(item.angle), item.distance);
     }
 
     chart = new QChart;
@@ -84,21 +88,21 @@ void MainWindow::plotAllForces()
     repulsiveSeries->setName("F_Rep(Teta)");
     for (auto& item : repulsive)
     {
-        repulsiveSeries->append(item.angle, item.distance);
+        repulsiveSeries->append(/*Solver::RadiansToDegrees*/(item.angle), item.distance);
     }
     chart->addSeries(repulsiveSeries);
     QLineSeries* attractiveSeries = new QLineSeries(chart);
     attractiveSeries->setName("F_Attr(Teta)");
     for (auto& item : attractive)
     {
-        attractiveSeries->append(item.angle, item.distance);
+        attractiveSeries->append(/*Solver::RadiansToDegrees*/(item.angle), item.distance);
     }
     chart->addSeries(attractiveSeries);
     QLineSeries* totalSeries = new QLineSeries(chart);
     totalSeries->setName("F_Total(Teta)");
     for (auto& item : total)
     {
-        totalSeries->append(item.angle, item.distance);
+        totalSeries->append(/*Solver::RadiansToDegrees*/(item.angle), item.distance);
     }
     chart->addSeries(totalSeries);
     chart->createDefaultAxes();

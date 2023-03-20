@@ -36,7 +36,7 @@ std::vector<Solver::DistanceSensorData> JsonDataProvider::getSample()
 
         for (int idx = 0; idx < array.size(); ++idx)
         {
-            sample.push_back({array[idx].toObject()[kAngleKey].toInt(),
+            sample.push_back({/*Solver::DegreesToRadians*/(array[idx].toObject()[kAngleKey].toDouble()),
                               array[idx].toObject()[kDistanceKey].toDouble()});
         }
     }

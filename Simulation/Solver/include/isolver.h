@@ -21,9 +21,9 @@ struct Obstacle
 struct SolverParams
 {
     static constexpr double _thresholdDistance = 2; // minimum distance to object.
-    static constexpr double _w_robot = 0.5; // robot width in meters.
+    static constexpr double _w_robot = 0.25; // robot width in meters.
     static constexpr double _distance_sensor_range = 10.0; // maximum range of distance sensor, in meters.
-    static constexpr double _teta_goal = 75; // angle to goal point.
+    static constexpr double _teta_goal = (60); // angle to goal point.
     static constexpr double _gamma = 0.5; // see eq (11)
 };
 
@@ -34,6 +34,14 @@ struct Forces
     std::vector<DistanceSensorData> totalFieldData;
 };
 
+/*
+* Usage: Create instance of Solver.
+* Flow:
+*   init(provider)
+*   calculateHeadingAngle()
+* calculateHeadingAngle() will wait for new chuck of data and then perform calculations.
+* It should be called in a working loop in user code.
+*/
 class ISolver
 {
 public:
@@ -41,11 +49,15 @@ public:
     std::vector<DistanceSensorData> getSensorData();
     Forces getForces();
     virtual int calculateHeadingAngle() = 0;
+
 protected:
     std::vector<DistanceSensorData> _distanceSensorData;
     Forces _forces;
     std::unique_ptr<IDataProvider> _dataProvider;
 
+    std::vector<Obstacle> findObstacles();
+    void enlargeObstacles(std::vector<Obstacle>& obstacles, const double w_robot);
+    void calculateObstaclesAverages(std::vector<Obstacle> &obstacles);
     virtual std::vector<DistanceSensorData> calculateRepulsiveField() = 0;
     virtual std::vector<DistanceSensorData> calculateAttractiveField() = 0;
     void calculateForces();

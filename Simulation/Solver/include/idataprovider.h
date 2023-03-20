@@ -2,12 +2,22 @@
 #define IDATAPROVIDER_H
 
 #include <vector>
+#include <cmath>
+
 namespace Solver
 {
 
+constexpr double DegreesToRadians(double degrees) {
+    return degrees * (M_PI / 180);
+}
+
+constexpr double RadiansToDegrees(double radians) {
+    return radians * (180.0 / M_PI);
+}
+
 struct DistanceSensorData
 {
-    int angle;
+    double angle;  // in radians.
     double distance;
 };
 
