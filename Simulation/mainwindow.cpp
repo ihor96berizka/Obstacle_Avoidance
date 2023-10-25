@@ -1,20 +1,20 @@
-#include "mainwindow.h"
+﻿#include "mainwindow.h"
 #include "ui_mainwindow.h"
-
-#include <random>
-#include <algorithm>
 
 #include <QJsonObject>
 #include <QFile>
 
+#include "jsondataprovider.h"
+#include "solver.h"
+#include "linearsolver.h"
+#include "laplacesolver.h"
+
 namespace
 {
-const char* kDistanceSensotFilePath{":/distance_sensor/distance_sensor_data.json"};
-
-const char* kDataKey{"Data"};
-const char* kAngleKey{"angle"};
-const char* kDistanceKey{"distance"};
+const char* kDistanceSensotFilePath{":/distance_sensor/distance_sensor_data.json"};//obstacles [20;65], [71;108]
+  //  ":/distance_sensor/distance_sensor_data_test.json"}; //obstacle is on angles[71;108]
 } // namespace
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -23,85 +23,101 @@ MainWindow::MainWindow(QWidget *parent)
 
     createActions();
     createMenus();
+    auto dataproviderPtr = std::make_unique<JsonDataProvider>(kDistanceSensotFilePath);
+    _solver = //std::make_unique<Solver::LinearSolver>();
+            //std::make_unique<Solver::GussianSolver>();
+            std::make_unique<Solver::LaplaceSolver>();
+    _solver->init(std::move(dataproviderPtr));
 }
 
 MainWindow::~MainWindow()
 {
+    delete chart;
     delete ui;
 }
 
 void MainWindow::simulateDistanceSensorSlot()
 {
-    _distanceSensorData = simulateDistanceSensor();
-    plotDistanceSensorData();
+    auto distanceSensorData = _solver->getSensorData();
+    plotDistanceSensorData(distanceSensorData);
 }
 
-QVector<DistanceSensorData> MainWindow::simulateDistanceSensor()
+void MainWindow::calculateForcesSlot()
 {
-    QVector<DistanceSensorData> parsedData;
-    QFile file(kDistanceSensotFilePath);
-
-    if (!file.open(QIODevice::ReadOnly))
-    {
-        qWarning() << "failed to open file:" << file.errorString();
-        return {};
-    }
-
-    QByteArray rawData = file.readAll();
-
-    QJsonObject jsonObj = QJsonDocument::fromJson(rawData).object();
-    if (jsonObj.contains(kDataKey) && jsonObj[kDataKey].isArray())
-    {
-        qInfo() << "parsing json...";
-        QJsonArray array = jsonObj[kDataKey].toArray();
-
-        for (int idx = 0; idx < array.size(); ++idx)
-        {
-            parsedData.append({array[idx].toObject()[kAngleKey].toInt(),
-                               array[idx].toObject()[kDistanceKey].toDouble()});
-        }
-    }
-    qInfo() << "Parsing done.";
-
-    return parsedData;
+    int angle = _solver->calculateHeadingAngle();
+    _forces = _solver->getForces();
+    qInfo() << "-----Angle: " << (angle);
+    plotAllForces();
 }
 
-void MainWindow::plotDistanceSensorData()
+void MainWindow::plotDistanceSensorData(const std::vector<Solver::DistanceSensorData> &data)
 {
     QLineSeries* threasholdLine = new QLineSeries;
     QLineSeries* distanceSeries = new QLineSeries;
+    threasholdLine->setName("Порогова відстань");
+    distanceSeries->setName("Відстань до перешкоди");
 
-    threasholdLine->setName("Threashold distance");
-    distanceSeries->setName("distance to obstacle");
-
-    for (auto& item : _distanceSensorData)
+    for (auto& item : data)
     {
-        threasholdLine->append(item.angle, _thresholdDistance);
-        distanceSeries->append(item.angle, item.distance);
+        threasholdLine->append(/*Solver::RadiansToDegrees*/(item.angle), Solver::SolverParams::_thresholdDistance);
+        distanceSeries->append(/*Solver::RadiansToDegrees*/(item.angle), item.distance);
     }
 
-    QChart* chart = new QChart;
+    chart = new QChart;
     chart->addSeries(threasholdLine);
     chart->addSeries(distanceSeries);
 
-
-    QChartView* chartView = new QChartView(chart);
+    chartView = new QChartView(chart);
     chartView->setRenderHint(QPainter::Antialiasing);
     chart->createDefaultAxes();
 
     chart->legend()->setVisible(true);
     chart->legend()->setAlignment(Qt::AlignBottom);
-    chart->axes(Qt::Horizontal).first()->setTitleText("angle");
+    chart->axes(Qt::Horizontal).first()->setTitleText("Кут");
     QAbstractAxis* yAxis =  chart->axes(Qt::Vertical).first();
-    yAxis->setTitleText("distance, m");
-    yAxis->setMin(0);
+    yAxis->setTitleText("Відстань, м");
+
     this->setCentralWidget(chartView);
+}
+
+void MainWindow::plotAllForces()
+{
+    auto [repulsive, attractive, total] = _forces;
+    chart->removeAllSeries();
+    QLineSeries* repulsiveSeries = new QLineSeries(chart);
+    repulsiveSeries->setName("Репульсивна сила");
+    for (auto& item : repulsive)
+    {
+        repulsiveSeries->append(/*Solver::RadiansToDegrees*/(item.angle), item.distance);
+    }
+    chart->addSeries(repulsiveSeries);
+    QLineSeries* attractiveSeries = new QLineSeries(chart);
+    attractiveSeries->setName("Атрактивна сила");
+    for (auto& item : attractive)
+    {
+        attractiveSeries->append(/*Solver::RadiansToDegrees*/(item.angle), item.distance);
+    }
+    chart->addSeries(attractiveSeries);
+    QLineSeries* totalSeries = new QLineSeries(chart);
+    totalSeries->setName("Сумарна сила");
+    for (auto& item : total)
+    {
+        totalSeries->append(/*Solver::RadiansToDegrees*/(item.angle), item.distance);
+    }
+    chart->addSeries(totalSeries);
+    chart->createDefaultAxes();
+    chart->legend()->setVisible(true);
+    chart->legend()->setAlignment(Qt::AlignBottom);
+    chart->axes(Qt::Horizontal).first()->setTitleText("Кут");
+    QAbstractAxis* yAxis =  chart->axes(Qt::Vertical).first();
+    yAxis->setTitleText("Модуль сили");
 }
 
 void MainWindow::createMenus()
 {
     _distanceSensorMenu = menuBar()->addMenu(tr("Distance sensor"));
     _distanceSensorMenu->addAction(_simulateSensorAct);
+    _distanceSensorMenu->addAction(_calculateGaussianForcesAct);
 }
 
 void MainWindow::createActions()
@@ -109,5 +125,9 @@ void MainWindow::createActions()
     _simulateSensorAct = new QAction(tr("Simulate data"), this);
     _simulateSensorAct->setToolTip(tr("Reads distance data from json file"));
     connect(_simulateSensorAct, &QAction::triggered, this, &MainWindow::simulateDistanceSensorSlot);
+
+    _calculateGaussianForcesAct = new QAction(tr("Calculate Gaussian forces"));
+    _calculateGaussianForcesAct->setToolTip(tr("Calculate f_rep, F_attr and F_total"));
+    connect(_calculateGaussianForcesAct, &QAction::triggered, this, &MainWindow::calculateForcesSlot);
 }
 
