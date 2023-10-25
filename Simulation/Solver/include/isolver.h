@@ -23,7 +23,7 @@ struct SolverParams
     static constexpr double _thresholdDistance = 2; // minimum distance to object.
     static constexpr double _w_robot = 0.25; // robot width in meters.
     static constexpr double _distance_sensor_range = 10.0; // maximum range of distance sensor, in meters.
-    static constexpr double _teta_goal = (60); // angle to goal point.
+    static constexpr double _teta_goal = (45); // angle to goal point.
     static constexpr double _gamma = 0.5; // see eq (11)
 };
 

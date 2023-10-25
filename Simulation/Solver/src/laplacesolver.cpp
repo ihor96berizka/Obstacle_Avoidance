@@ -75,7 +75,7 @@ std::vector<DistanceSensorData> LaplaceSolver::calculateAttractiveField()
     std::vector<DistanceSensorData> attrFieldData;
     for (size_t i = 0; i < _distanceSensorData.size(); ++i) // distance sensor data is used, cause it holds angles.
     {
-        double value = SolverParams::_gamma * std::abs(DegreesToRadians(SolverParams::_teta_goal - _distanceSensorData[i].angle));
+        double value = SolverParams::_gamma * (std::sqrt(2) / 0.1) * std::abs(DegreesToRadians(SolverParams::_teta_goal - _distanceSensorData[i].angle));
         attrFieldData.push_back({_distanceSensorData[i].angle, value});
     }
 

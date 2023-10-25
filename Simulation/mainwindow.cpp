@@ -25,8 +25,8 @@ MainWindow::MainWindow(QWidget *parent)
     createMenus();
     auto dataproviderPtr = std::make_unique<JsonDataProvider>(kDistanceSensotFilePath);
     _solver = //std::make_unique<Solver::LinearSolver>();
-            std::make_unique<Solver::GussianSolver>();
-            //std::make_unique<Solver::LaplaceSolver>();
+            //std::make_unique<Solver::GussianSolver>();
+            std::make_unique<Solver::LaplaceSolver>();
     _solver->init(std::move(dataproviderPtr));
 }
 
@@ -54,8 +54,8 @@ void MainWindow::plotDistanceSensorData(const std::vector<Solver::DistanceSensor
 {
     QLineSeries* threasholdLine = new QLineSeries;
     QLineSeries* distanceSeries = new QLineSeries;
-    threasholdLine->setName("Threashold distance");
-    distanceSeries->setName("distance to obstacle");
+    threasholdLine->setName("Порогова відстань");
+    distanceSeries->setName("Відстань до перешкоди");
 
     for (auto& item : data)
     {
@@ -73,9 +73,9 @@ void MainWindow::plotDistanceSensorData(const std::vector<Solver::DistanceSensor
 
     chart->legend()->setVisible(true);
     chart->legend()->setAlignment(Qt::AlignBottom);
-    chart->axes(Qt::Horizontal).first()->setTitleText("angle");
+    chart->axes(Qt::Horizontal).first()->setTitleText("Кут");
     QAbstractAxis* yAxis =  chart->axes(Qt::Vertical).first();
-    yAxis->setTitleText("distance, m");
+    yAxis->setTitleText("Відстань, м");
 
     this->setCentralWidget(chartView);
 }
@@ -85,21 +85,21 @@ void MainWindow::plotAllForces()
     auto [repulsive, attractive, total] = _forces;
     chart->removeAllSeries();
     QLineSeries* repulsiveSeries = new QLineSeries(chart);
-    repulsiveSeries->setName("F_Rep(Teta)");
+    repulsiveSeries->setName("Репульсивна сила");
     for (auto& item : repulsive)
     {
         repulsiveSeries->append(/*Solver::RadiansToDegrees*/(item.angle), item.distance);
     }
     chart->addSeries(repulsiveSeries);
     QLineSeries* attractiveSeries = new QLineSeries(chart);
-    attractiveSeries->setName("F_Attr(Teta)");
+    attractiveSeries->setName("Атрактивна сила");
     for (auto& item : attractive)
     {
         attractiveSeries->append(/*Solver::RadiansToDegrees*/(item.angle), item.distance);
     }
     chart->addSeries(attractiveSeries);
     QLineSeries* totalSeries = new QLineSeries(chart);
-    totalSeries->setName("F_Total(Teta)");
+    totalSeries->setName("Сумарна сила");
     for (auto& item : total)
     {
         totalSeries->append(/*Solver::RadiansToDegrees*/(item.angle), item.distance);
@@ -108,9 +108,9 @@ void MainWindow::plotAllForces()
     chart->createDefaultAxes();
     chart->legend()->setVisible(true);
     chart->legend()->setAlignment(Qt::AlignBottom);
-    chart->axes(Qt::Horizontal).first()->setTitleText("angle");
+    chart->axes(Qt::Horizontal).first()->setTitleText("Кут");
     QAbstractAxis* yAxis =  chart->axes(Qt::Vertical).first();
-    yAxis->setTitleText("F_x(Teta[i])");
+    yAxis->setTitleText("Модуль сили");
 }
 
 void MainWindow::createMenus()

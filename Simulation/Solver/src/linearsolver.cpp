@@ -32,18 +32,6 @@ std::vector<Solver::DistanceSensorData> LinearSolver::calculateRepulsiveField()
         double sum = 0;
         for (size_t k = 0; k < obstacles.size(); ++k)
         {
-            /*int midIdx = obstacles[k].angles.size() / 2;
-            double sigma = obstacles[k].averageAngle / 2.0;  // half of the angle occupied by obstacle
-            //qInfo() << "angle: " << obstacles[k].averageAngle;
-            //qInfo() << "midIDx: " << midIdx;
-            //qInfo() << "sigma/: " << sigma;
-
-            double Teta_k = obstacles[k].angles[midIdx];  //center angle of the obstacle
-            //qInfo() << "teta[0]: " << Teta_k;
-            double underExp = -(std::pow(Teta_k - _distanceSensorData[i].angle, 2))
-                    /
-                    2.0 * std::pow(sigma, 2);
-            //qInfo() << "A[k]: " << obstacles[k].a;*/
             double val =  (SolverParams::_distance_sensor_range - _distanceSensorData[i].distance) * obstacles[k].averageDistance;
             sum += val;
         }
@@ -62,7 +50,7 @@ std::vector<Solver::DistanceSensorData> LinearSolver::calculateAttractiveField()
     std::vector<DistanceSensorData> attrFieldData;
     for (size_t i = 0; i < _distanceSensorData.size(); ++i) // distance sensor data is used, cause it holds angles.
     {
-        double value = SolverParams::_gamma * fabs(SolverParams::_teta_goal - _distanceSensorData[i].angle);
+        double value = SolverParams::_gamma * 0.8 * fabs(SolverParams::_teta_goal - _distanceSensorData[i].angle);
         attrFieldData.push_back({_distanceSensorData[i].angle, value});
     }
 
